@@ -354,8 +354,22 @@ def apply_navigation_styles() -> str:
             left: 0%;
         }
 
+        .nav-logo {
+            margin-right: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-logo-img {
+            height: 45px;
+            width: auto;
+            display: block;
+            pointer-events: none;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
         .nav-spacer {
-            height: 60px;
+            height: 30;
             pointer-events: none;
         }
     """
@@ -1014,22 +1028,28 @@ active_format = st.session_state["active_tab"]
 mp3_active = "active" if active_format == "MP3" else ""
 mp4_active = "active" if active_format == "MP4" else ""
 
-
 st.markdown(
     f"""
     <div class="my-nav">
         <ul class="nav-tabs">
-            <li class="nav-item">
-                <a href="?" target="_self" class="nav-tab">Home</a>
+            <li class="nav-item nav-logo">
+                <svg class="nav-logo-img" viewBox="0 0 500 500" xmlns="./assets/Music Bank.svg">
+                    <defs>
+                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#5B7EC8;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#4A5F9D;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <path fill="url(#logoGradient)" d="M200,160 L200,240 C200,260 220,260 220,240 L220,200 L250,200 L250,240 C250,260 270,260 270,240 L270,180 L290,160 L310,280 L200,280 Z M180,300 L330,300 L350,160 L310,140 L270,160 L270,140 L240,140 L240,180 L200,180 L180,300 Z"/>
+                    <text x="120" y="360" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000000">Music</text>
+                    <text x="250" y="360" font-family="Arial, sans-serif" font-size="48" font-weight="600" fill="#5B7EC8">Bank</text>
+                </svg>
             </li>
             <li class="nav-item">
                 <a href="?tab=mp3" target="_self" class="nav-tab {mp3_active}">🎵 MP3</a>
             </li>
             <li class="nav-item">
                 <a href="?tab=mp4" target="_self" class="nav-tab {mp4_active}">🎬 MP4</a>
-            </li>
-            <li class="nav-item">
-                <a href="?" target="_self" class="nav-tab">About</a>
             </li>
         </ul>
     </div>
