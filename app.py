@@ -525,6 +525,21 @@ def fetch_playlist_entries(url: str, max_items: Optional[int] = None):
             "skip_download": True,
             "ignoreerrors": True,
             "extract_flat": "in_playlist",
+            # Aggressive YouTube 403 bypass
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "web"],
+                    "player_skip": ["webpage", "configs"],
+                }
+            },
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-us,en;q=0.5",
+            },
+            "nocheckcertificate": True,
+            "geo_bypass": True,
         }
         if max_items:
             metadata_opts["playlist_items"] = f"1:{max_items}"
@@ -561,6 +576,22 @@ def build_ydl_options(target_dir: Path, media_format: str):
         "no_warnings": True,
         "noprogress": True,
         "autonumber_start": 1,
+        # Aggressive YouTube 403 bypass
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "web"],
+                "player_skip": ["webpage", "configs"],
+            }
+        },
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-us,en;q=0.5",
+            "Sec-Fetch-Mode": "navigate",
+        },
+        "nocheckcertificate": True,
+        "geo_bypass": True,
     }
 
     if media_format == "mp3":
