@@ -493,6 +493,10 @@ def fetch_playlist_entries(url: str, max_items: Optional[int] = None):
             "skip_download": True,
             "ignoreerrors": True,
             "extract_flat": "in_playlist",
+            # Fix YouTube 403 Forbidden errors
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+            "nocheckcertificate": True,
         }
         if max_items:
             metadata_opts["playlist_items"] = f"1:{max_items}"
@@ -529,6 +533,10 @@ def build_ydl_options(target_dir: Path, media_format: str):
         "no_warnings": True,
         "noprogress": True,
         "autonumber_start": 1,
+        # Fix YouTube 403 Forbidden errors
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "nocheckcertificate": True,
     }
 
     if media_format == "mp3":
