@@ -15,10 +15,8 @@ import yt_dlp
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
 
-def apply_liquid_glass_theme() -> None:
-    st.markdown(
-        """
-        <style>
+def apply_root_variables() -> str:
+    return """
         :root {
             --glass-bg: rgba(15, 23, 42, 0.55);
             --glass-border: rgba(148, 163, 184, 0.35);
@@ -26,7 +24,11 @@ def apply_liquid_glass_theme() -> None:
             --text-primary: #e2e8f0;
             --text-muted: #cbd5f5;
         }
+    """
 
+
+def apply_body_background() -> str:
+    return """
         body {
             background: transparent;
             color: var(--text-primary);
@@ -51,11 +53,16 @@ def apply_liquid_glass_theme() -> None:
 
         [data-testid="stHeader"] {
             background: transparent;
+            z-index: 1;
         }
+    """
 
+
+def apply_hero_styles() -> str:
+    return """
         .glass-hero {
             position: relative;
-            margin: 2.5rem 0 1.75rem 0;
+            margin: 0.75rem 0 1.75rem 0;
             padding: 2.75rem 3rem;
             border-radius: 32px;
             background: radial-gradient(circle at 25% -10%, rgba(96, 165, 250, 0.22), transparent 65%),
@@ -65,6 +72,13 @@ def apply_liquid_glass_theme() -> None:
             backdrop-filter: blur(26px) saturate(120%);
             box-shadow: 0 25px 60px rgba(15, 23, 42, 0.55);
             overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-hero:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 30px 70px rgba(15, 23, 42, 0.65);
+            border-color: rgba(96, 165, 250, 0.4);
         }
 
         .glass-hero::after {
@@ -79,17 +93,105 @@ def apply_liquid_glass_theme() -> None:
             filter: blur(8px);
             animation: float 10s ease-in-out infinite;
         }
+    """
+
+
+def apply_card_styles() -> str:
+    return """
+        .glass-card {
             border-radius: 18px;
             background: rgba(15, 23, 42, 0.75);
             border: 1px solid rgba(94, 234, 212, 0.25);
             backdrop-filter: blur(24px) saturate(150%);
             box-shadow: 0 10px 30px rgba(15, 23, 42, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        div[data-testid="stAlert"] p {
+        .glass-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(15, 23, 42, 0.5);
+            border-color: rgba(94, 234, 212, 0.4);
+        }
+    """
+
+
+def apply_button_styles() -> str:
+    return """
+        button[kind="primary"], button[kind="secondary"], [data-testid="stDownloadButton"] button {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        button[kind="primary"]:hover, button[kind="secondary"]:hover, [data-testid="stDownloadButton"] button:hover {
+            transform: translateY(-2px) scale(1.02) !important;
+            box-shadow: 0 8px 20px rgba(96, 165, 250, 0.4) !important;
+        }
+
+        button[kind="primary"]:active, button[kind="secondary"]:active, [data-testid="stDownloadButton"] button:active {
+            transform: translateY(0px) scale(0.98) !important;
+        }
+    """
+
+
+def apply_input_styles() -> str:
+    return """
+        [data-testid="stTextInput"] > div > div > input {
+            transition: all 0.3s ease !important;
+        }
+
+        [data-testid="stTextInput"] > div > div > input:hover {
+            border-color: rgba(96, 165, 250, 0.5) !important;
+            box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.3) !important;
+        }
+
+        [data-testid="stTextInput"] > div > div > input:focus {
+            border-color: rgba(96, 165, 250, 0.7) !important;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.4) !important;
+        }
+    """
+
+
+def apply_expander_styles() -> str:
+    return """
+        [data-testid="stExpander"] {
+            transition: all 0.3s ease !important;
+        }
+
+        [data-testid="stExpander"]:hover {
+            transform: translateX(4px);
+        }
+    """
+
+
+def apply_metric_styles() -> str:
+    return """
+        [data-testid="stMetric"] {
+            transition: all 0.3s ease;
+        }
+
+        [data-testid="stMetric"]:hover {
+            transform: scale(1.05);
+        }
+
+        [data-testid="stMetricValue"] {
             color: var(--text-primary);
         }
 
+        [data-testid="stMetricLabel"] {
+            color: rgba(226, 232, 240, 0.76);
+        }
+    """
+
+
+def apply_alert_styles() -> str:
+    return """
+        div[data-testid="stAlert"] p {
+            color: var(--text-primary);
+        }
+    """
+
+
+def apply_results_styles() -> str:
+    return """
         .glass-results .st-expander {
             border-radius: 18px !important;
             background: rgba(15, 23, 42, 0.6) !important;
@@ -111,15 +213,156 @@ def apply_liquid_glass_theme() -> None:
             margin-bottom: 1.2rem;
             color: var(--text-primary);
         }
+    """
 
-        [data-testid="stMetricValue"] {
-            color: var(--text-primary);
+
+def apply_navigation_styles() -> str:
+    return """
+        .my-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            background: radial-gradient(circle at 20% 50%, rgba(96, 165, 250, 0.15), transparent 70%),
+                        radial-gradient(circle at 80% 50%, rgba(168, 85, 247, 0.12), transparent 70%),
+                        rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(24px) saturate(140%);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            pointer-events: auto;
         }
 
-        [data-testid="stMetricLabel"] {
-            color: rgba(226, 232, 240, 0.76);
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            list-style: none;
+            margin: 0;
+            padding: 0.1rem 1rem;
+            pointer-events: auto;
         }
 
+        .nav-item {
+            position: relative;
+            display: inline-block;
+            pointer-events: auto;
+        }
+
+        .nav-tab {
+            padding: 0.8rem 2.5rem;
+            margin: 0rem 0.5rem;
+            background: transparent;
+            border: none;
+            color: rgba(226, 232, 240, 0.7);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            font-size: 0.95rem;
+            text-decoration: none !important;
+            letter-spacing: 0.02em;
+            position: relative;
+            display: inline-block;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .nav-tab::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            background: radial-gradient(circle at 30% 40%, rgba(96, 165, 250, 0.3), transparent 70%),
+                        radial-gradient(circle at 70% 60%, rgba(168, 85, 247, 0.25), transparent 70%),
+                        rgba(15, 23, 42, 0.4);
+            opacity: 0;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(0.92);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .nav-tab::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, rgba(96, 165, 250, 0.8), rgba(168, 85, 247, 0.8), rgba(244, 114, 182, 0.7));
+            border-radius: 2px;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .nav-tab:link, .nav-tab:visited, .nav-tab:hover, .nav-tab:active {
+            text-decoration: none !important;
+        }
+
+        .nav-tab:hover {
+            color: #ffffff !important;
+            background: radial-gradient(circle at 35% 35%, rgba(96, 165, 250, 0.35), transparent 75%),
+                        radial-gradient(circle at 65% 65%, rgba(168, 85, 247, 0.3), transparent 75%),
+                        rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 10px 32px rgba(96, 165, 250, 0.4),
+                        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+                        0 2px 0 rgba(255, 255, 255, 0.15) inset;
+            transform: translateY(-4px) scale(1.08);
+            letter-spacing: 0.08em;
+            border-radius: 14px;
+        }
+
+        .nav-tab:hover::before {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .nav-tab:hover::after {
+            width: 100%;
+            left: 0%;
+        }
+
+        .nav-tab:active {
+            transform: translateY(0px);
+        }
+
+        .nav-tab.disabled {
+            color: rgba(226, 232, 240, 0.3);
+            cursor: not-allowed;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .nav-tab.active {
+            color: #ffffff;
+            background: radial-gradient(circle at 40% 40%, rgba(96, 165, 250, 0.4), transparent 80%),
+                        radial-gradient(circle at 60% 60%, rgba(168, 85, 247, 0.35), transparent 80%),
+                        rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(96, 165, 250, 0.5);
+            border-radius: 14px;
+            font-weight: 600;
+            box-shadow: 0 6px 24px rgba(96, 165, 250, 0.45),
+                        0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+                        0 2px 0 rgba(255, 255, 255, 0.2) inset;
+        }
+
+        .nav-tab.active::after {
+            width: 100%;
+            left: 0%;
+        }
+
+        .nav-spacer {
+            height: 60px;
+            pointer-events: none;
+        }
+    """
+
+
+def apply_responsive_styles() -> str:
+    return """
         @media (max-width: 768px) {
             .glass-card {
                 padding: 1.6rem 1.4rem;
@@ -128,7 +371,34 @@ def apply_liquid_glass_theme() -> None:
             .glass-hero {
                 padding: 2.2rem 1.75rem;
             }
+
+            .nav-tabs {
+                flex-direction: column;
+            }
+
+            .nav-tab {
+                text-align: center;
+            }
         }
+    """
+
+
+def apply_liquid_glass_theme() -> None:
+    st.markdown(
+        f"""
+        <style>
+        {apply_root_variables()}
+        {apply_body_background()}
+        {apply_hero_styles()}
+        {apply_card_styles()}
+        {apply_button_styles()}
+        {apply_input_styles()}
+        {apply_expander_styles()}
+        {apply_metric_styles()}
+        {apply_alert_styles()}
+        {apply_results_styles()}
+        {apply_navigation_styles()}
+        {apply_responsive_styles()}
         </style>
         """,
         unsafe_allow_html=True,
@@ -653,6 +923,9 @@ def download_playlist(
 st.set_page_config(page_title="YouTube Playlist Downloader", page_icon="🎧", layout="centered")
 apply_liquid_glass_theme()
 
+if "active_tab" not in st.session_state:
+    st.session_state["active_tab"] = "MP3"
+
 job_state = get_job_state()
 
 
@@ -728,12 +1001,49 @@ def render_status(status_placeholder, progress_holder) -> None:
     )
 
 
+# Check URL query params for tab selection
+query_params = st.query_params
+if "tab" in query_params:
+    tab_value = query_params["tab"].upper()
+    if tab_value in ["MP3", "MP4"] and tab_value != st.session_state.get("active_tab"):
+        st.session_state["active_tab"] = tab_value
+        st.rerun()
+
+active_format = st.session_state["active_tab"]
+
+mp3_active = "active" if active_format == "MP3" else ""
+mp4_active = "active" if active_format == "MP4" else ""
+
+
 st.markdown(
-    """
+    f"""
+    <div class="my-nav">
+        <ul class="nav-tabs">
+            <li class="nav-item">
+                <a href="?" class="nav-tab">Home</a>
+            </li>
+            <li class="nav-item">
+                <a href="?tab=mp3" class="nav-tab {mp3_active}">🎵 MP3</a>
+            </li>
+            <li class="nav-item">
+                <a href="?tab=mp4" class="nav-tab {mp4_active}">🎬 MP4</a>
+            </li>
+            <li class="nav-item">
+                <a href="?" class="nav-tab">About</a>
+            </li>
+        </ul>
+    </div>
+    <div class="nav-spacer"></div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    f"""
     <div class="glass-hero">
-        <h1>Liquid Glass Playlist Downloader</h1>
-        <p>Transform any YouTube playlist into pristine MP3 or MP4 files with a single click. Paste your link,
-        choose a format, and let the alchemy begin.</p>
+        <h1>YouTube Playlist Downloader - {active_format}</h1>
+        <p>Transform any YouTube playlist into pristine {active_format} files with a single click. Paste your link,
+        choose options, and let the alchemy begin.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -746,7 +1056,7 @@ with st.container():
             "Playlist URL",
             placeholder="https://www.youtube.com/playlist?list=...",
         )
-        format_choice = st.radio("Select output format", options=["MP4", "MP3"], horizontal=True)
+        format_choice = active_format
         with st.expander("Advanced options", expanded=False):
             limit_playlist = st.checkbox("Limit playlist items", value=False)
             limit_value = st.number_input(
