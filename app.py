@@ -942,7 +942,7 @@ def download_playlist(
     return playlist_info
 
 
-st.set_page_config(page_title="YouTube Playlist Downloader", page_icon="🎧", layout="centered")
+st.set_page_config(page_title="Music Bank | YouTube Playlist Downloader", page_icon="🎵", layout="centered")
 apply_liquid_glass_theme()
 
 # Initialize preloader state
