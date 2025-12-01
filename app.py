@@ -1020,16 +1020,16 @@ st.markdown(
     <div class="my-nav">
         <ul class="nav-tabs">
             <li class="nav-item">
-                <a href="?" class="nav-tab">Home</a>
+                <a href="?" target="_self" class="nav-tab">Home</a>
             </li>
             <li class="nav-item">
-                <a href="?tab=mp3" class="nav-tab {mp3_active}">🎵 MP3</a>
+                <a href="?tab=mp3" target="_self" class="nav-tab {mp3_active}">🎵 MP3</a>
             </li>
             <li class="nav-item">
-                <a href="?tab=mp4" class="nav-tab {mp4_active}">🎬 MP4</a>
+                <a href="?tab=mp4" target="_self" class="nav-tab {mp4_active}">🎬 MP4</a>
             </li>
             <li class="nav-item">
-                <a href="?" class="nav-tab">About</a>
+                <a href="?" target="_self" class="nav-tab">About</a>
             </li>
         </ul>
     </div>
