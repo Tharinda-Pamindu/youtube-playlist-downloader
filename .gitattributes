@@ -1,0 +1,6 @@
+# Git Large File Storage (LFS) configuration
+# Use this if you need to commit large FFmpeg binaries
+
+# Track FFmpeg binaries
+deps/ffmpeg/bin/* filter=lfs diff=lfs merge=lfs -text
+*.exe filter=lfs diff=lfs merge=lfs -text
