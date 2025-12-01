@@ -525,12 +525,11 @@ def fetch_playlist_entries(url: str, max_items: Optional[int] = None):
             "skip_download": True,
             "ignoreerrors": True,
             "extract_flat": "in_playlist",
-            # Aggressive YouTube 403 bypass
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            # Aggressive YouTube 403 bypass - use mobile clients
+            "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "ios", "web"],
-                    "player_skip": ["webpage", "configs"],
+                    "player_client": ["android", "ios"],
                 }
             },
             "http_headers": {
@@ -576,12 +575,11 @@ def build_ydl_options(target_dir: Path, media_format: str):
         "no_warnings": True,
         "noprogress": True,
         "autonumber_start": 1,
-        # Aggressive YouTube 403 bypass
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        # Aggressive YouTube 403 bypass - use mobile clients
+        "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip",
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "ios", "web"],
-                "player_skip": ["webpage", "configs"],
+                "player_client": ["android", "ios"],
             }
         },
         "http_headers": {
