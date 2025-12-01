@@ -452,6 +452,7 @@ def resolve_ffmpeg_path() -> str | None:
     if _FFMPEG_PATH_CACHE:
         return _FFMPEG_PATH_CACHE
 
+    # Check environment variable override
     override = os.environ.get("FFMPEG_BINARY")
     if override:
         explicit_path = Path(override)
@@ -463,8 +464,9 @@ def resolve_ffmpeg_path() -> str | None:
             _FFMPEG_PATH_CACHE = resolved_override
             return _FFMPEG_PATH_CACHE
 
+    # Check bundled binaries in deps/ffmpeg/bin
     bundled_bin = Path(__file__).resolve().parent / "deps" / "ffmpeg" / "bin"
-    if bundled_bin.exists():
+    if bundled_bin.exists() and bundled_bin.is_dir():
         current_path = os.environ.get("PATH", "")
         path_parts = current_path.split(os.pathsep) if current_path else []
         if str(bundled_bin) not in path_parts:
@@ -472,18 +474,48 @@ def resolve_ffmpeg_path() -> str | None:
                 f"{bundled_bin}{os.pathsep}{current_path}" if current_path else str(bundled_bin)
             )
 
+    # Check system PATH (works with packages.txt on Streamlit Cloud)
     resolved = shutil.which("ffmpeg")
     if resolved:
         _FFMPEG_PATH_CACHE = resolved
-    return resolved
+        return resolved
+    
+    # Also try common system locations
+    common_paths = [
+        "/usr/bin/ffmpeg",
+        "/usr/local/bin/ffmpeg",
+        "/opt/homebrew/bin/ffmpeg",
+    ]
+    for path in common_paths:
+        if Path(path).exists():
+            _FFMPEG_PATH_CACHE = path
+            return path
+    
+    return None
 
 
 def ensure_ffmpeg(media_format: str) -> None:
-    if media_format in ("mp3", "mp4") and resolve_ffmpeg_path() is None:
-        raise RuntimeError(
-            "FFmpeg is required for the selected format. Provide a system install or place binaries in "
-            "deps/ffmpeg/bin."
-        )
+    if media_format in ("mp3", "mp4"):
+        ffmpeg_path = resolve_ffmpeg_path()
+        if ffmpeg_path is None:
+            # Debug information for troubleshooting
+            debug_info = []
+            debug_info.append(f"System PATH: {os.environ.get('PATH', 'Not found')[:200]}...")
+            
+            bundled_bin = Path(__file__).resolve().parent / "deps" / "ffmpeg" / "bin"
+            debug_info.append(f"Bundled path exists: {bundled_bin.exists()}")
+            
+            which_result = shutil.which("ffmpeg")
+            debug_info.append(f"which ffmpeg: {which_result}")
+            
+            error_msg = (
+                "FFmpeg is required for the selected format. "
+                "Please ensure FFmpeg is installed.\n\n"
+                "For Streamlit Cloud: Add 'ffmpeg' to packages.txt\n"
+                "For local: Install FFmpeg or place binaries in deps/ffmpeg/bin\n\n"
+                f"Debug info:\n" + "\n".join(debug_info)
+            )
+            raise RuntimeError(error_msg)
 
 
 def fetch_playlist_entries(url: str, max_items: Optional[int] = None):
