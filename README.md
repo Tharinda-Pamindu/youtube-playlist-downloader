@@ -10,6 +10,8 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.51+-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
+[🚀 **Live Demo**](https://musicbank.streamlit.app/) | [📖 Documentation](#-features) | [🤝 Contributing](CONTRIBUTING.md)
+
 </div>
 
 ---
