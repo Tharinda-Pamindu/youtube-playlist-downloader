@@ -26,7 +26,9 @@
 
 ### 🚀 Powerful Functionality
 - **Batch Downloads** - Download entire YouTube playlists with a single click
+- **Quality Selection** - Choose from **1080p, 720p, 480p, or 360p** for video downloads
 - **Dual Format Support** - Choose between MP3 (audio) or MP4 (video) formats
+- **Strict Quality Enforcement** - Ensures you get the exact resolution you requested
 - **Individual Downloads** - Access each completed file instantly with download buttons
 - **ZIP Archive** - Download all files in a single compressed archive
 - **Background Processing** - Multi-threaded downloads that don't block the UI
@@ -36,7 +38,7 @@
 ### 🛠️ Technical Excellence
 - Built with **Streamlit 1.51.0** for rapid web app development
 - Powered by **yt-dlp** for reliable YouTube downloads
-- **FFmpeg integration** for seamless audio/video processing
+- **FFmpeg & FFprobe integration** for seamless audio/video merging and 1080p support
 - Session state management for smooth user experience
 - Thread-safe download queue with cancellation support
 
@@ -47,9 +49,10 @@
 Before you begin, ensure you have:
 
 - **Python 3.9 or newer** installed
-- **FFmpeg** - Either:
+- **FFmpeg Suite** (CRITICAL for 1080p):
+  - You MUST have both `ffmpeg.exe` **AND** `ffprobe.exe`.
   - Install system-wide and add to `PATH` (recommended), or
-  - Place binaries in `deps/ffmpeg/bin` folder (auto-detected)
+  - Place BOTH binaries in `deps/ffmpeg/bin` folder (auto-detected)
 
 ---
 
@@ -92,9 +95,12 @@ The app will automatically open at `http://localhost:8501`
 3. **Select format:**
    - 🎵 **MP3** - Audio only (smaller file size)
    - 🎬 **MP4** - Video with audio (full quality)
-4. *(Optional)* **Limit downloads** - Enter a number to download only the first N videos
-5. **Click "Start Download"** and watch the progress
-6. **Download files individually** as they complete, or wait for the ZIP archive
+4. **Select Video Quality (MP4 only):**
+   - Choose from **Best, 1080p, 720p, 480p, or 360p**.
+   - *Note: 1080p/720p requires FFmpeg + FFprobe to merge video and audio streams.*
+5. *(Optional)* **Limit downloads** - Enter a number to download only the first N videos
+6. **Click "Start Download"** and watch the progress
+7. **Download files individually** as they complete, or wait for the ZIP archive
 
 ---
 
@@ -131,6 +137,8 @@ youtube-playlist-downloader/
 ├── deps/                      # Optional FFmpeg binaries
 │   └── ffmpeg/
 │       └── bin/
+│           ├── ffmpeg.exe     # Required for processing
+│           └── ffprobe.exe    # REQUIRED for 1080p/720p merging
 ├── README.md                  # This file
 ├── CONTRIBUTING.md            # Contribution guidelines
 └── LICENSE                    # MIT License
@@ -140,17 +148,23 @@ youtube-playlist-downloader/
 
 ## 🔧 Configuration
 
-### FFmpeg Setup
+### FFmpeg Setup (CRITICAL)
+
+To enable **1080p and 720p** downloads, the application needs to merge separate audio and video streams. This requires **TWO** files:
+
+1.  `ffmpeg.exe`
+2.  `ffprobe.exe`
 
 **Option 1: System Installation (Recommended)**
-- Windows: Download from [ffmpeg.org](https://ffmpeg.org) and add to PATH
+- Windows: Download from [ffmpeg.org](https://ffmpeg.org), extract, and add the `bin` folder containing both files to your system `PATH`.
 - macOS: `brew install ffmpeg`
 - Linux: `sudo apt install ffmpeg`
 
 **Option 2: Local Installation**
-- Create `deps/ffmpeg/bin/` directory
-- Download FFmpeg binaries and place in this folder
-- App will auto-detect and use local binaries
+- Create `deps/ffmpeg/bin/` directory in the project root.
+- Download FFmpeg binaries (Essentials or Full build).
+- Extract **BOTH** `ffmpeg.exe` and `ffprobe.exe` into `deps/ffmpeg/bin/`.
+- The app will auto-detect and use them.
 
 ---
 
