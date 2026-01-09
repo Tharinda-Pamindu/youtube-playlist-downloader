@@ -736,11 +736,12 @@ def initialize_job_state() -> dict:
         "max_items": None,
         "playlist_total": None,
         "playlist_title": None,
+        "playlist_title": None,
         "items": [],
         "failures": [],
-        "archive_data": None,
-        "archive_name": None,
+        "archive_batches": [], # List of dicts: {name, data, range_start, range_end}
         "status_type": "info",
+        "status_message": "Awaiting your playlist...",
         "status_message": "Awaiting your playlist...",
         "progress_value": 0.0,
         "progress_text": "Awaiting your playlist...",
@@ -873,8 +874,9 @@ def start_download_job(url: str, media_format: str, max_items: Optional[int], qu
             "playlist_title": None,
             "items": [],
             "failures": [],
-            "archive_data": None,
-            "archive_name": None,
+            "archive_batches": [],
+            "archive_data": None, # Reset for new job
+            "archive_name": None, # Reset for new job
             "status_type": "info",
             "status_message": status_message,
             "progress_value": 0.0,
@@ -914,6 +916,13 @@ def start_download_job(url: str, media_format: str, max_items: Optional[int], qu
         register_failure(job_id, failure)
         safe_rerun()
 
+    def batch_callback(batch_info: dict) -> None:
+        job = get_job_state()
+        if "archive_batches" not in job:
+             job["archive_batches"] = []
+        job["archive_batches"].append(batch_info)
+        safe_rerun()
+
     def worker() -> None:
         try:
             playlist_info = download_playlist(
@@ -924,6 +933,7 @@ def start_download_job(url: str, media_format: str, max_items: Optional[int], qu
                 total_callback=total_callback,
                 success_callback=success_callback,
                 failure_callback=failure_callback,
+                batch_callback=batch_callback,
                 cancel_event=cancel_event,
                 max_items=max_items,
                 quality=quality,
@@ -958,6 +968,7 @@ def download_playlist(
     total_callback=None,
     success_callback=None,
     failure_callback=None,
+    batch_callback=None,
     cancel_event=None,
     max_items: Optional[int] = None,
     quality: str = "best",
@@ -977,6 +988,10 @@ def download_playlist(
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         ydl_opts = build_ydl_options(temp_path, media_format_lower, quality)
+
+
+        batch_buffer = []
+        batch_start_index = 0
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             for position, entry in enumerate(entries, start=1):
@@ -1053,6 +1068,30 @@ def download_playlist(
                 if progress_callback:
                     progress_callback(position / total_items, f"Processed {position}/{total_items}")
 
+                # Batch Processing: Create a ZIP every 10 items
+                batch_buffer.append(file_info)
+                if len(batch_buffer) >= 10 or position == total_items:
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                        for item in batch_buffer:
+                            zf.writestr(item["filename"], item["data"])
+                    
+                    batch_end_index = position
+                    batch_name = f"MusicBank_Batch_{batch_start_index+1}-{batch_end_index}.zip"
+                    
+                    if batch_callback:
+                        batch_callback({
+                            "name": batch_name,
+                            "data": zip_buffer.getvalue(),
+                            "count": len(batch_buffer),
+                            "range_start": batch_start_index + 1,
+                            "range_end": batch_end_index
+                        })
+                    
+                    batch_buffer = []
+                    batch_start_index = position
+
+
     return playlist_info
 
 
@@ -1107,11 +1146,11 @@ if not st.session_state["preloader_shown"]:
         @keyframes pulse {
             0%, 100% {
                 transform: scale(1);
-                filter: drop-shadow(0 10px 30px rgba(96, 165, 250, 0.4));
+                filter: drop_shadow(0 10px 30px rgba(96, 165, 250, 0.4));
             }
             50% {
                 transform: scale(1.05);
-                filter: drop-shadow(0 15px 40px rgba(96, 165, 250, 0.6));
+                filter: drop_shadow(0 15px 40px rgba(96, 165, 250, 0.6));
             }
         }
         
@@ -1199,27 +1238,48 @@ def render_results(placeholder) -> None:
         col_total.metric("Playlist size", playlist_total if playlist_total else "–")
 
         if job["items"]:
-            for idx, item in enumerate(job["items"], start=1):
-                button_label = f"Download {item['filename']}"
-                key = f"download-{idx}-{item['token']}"
-                st.download_button(
-                    label=button_label,
-                    data=item["data"],
-                    file_name=item["filename"],
-                    mime=item["mime"],
-                    key=key,
-                )
-                meta_bits = [item.get("title")]
-                duration_text = format_duration(item.get("duration"))
-                if duration_text:
-                    meta_bits.append(duration_text)
-                meta_line = " • ".join(filter(None, meta_bits))
-                if meta_line:
-                    st.caption(meta_line)
+            # Only show individual items NOT included in a batch? 
+            # Or just show all? Showing all might be overwhelming if 1000 items.
+            # Let's show only the most recent (unbatched) items to keep UI clean, 
+            # OR show them in a collapsed view?
+            # User complaint is "files not working". 
+            
+            # Let's put individual files in an expander if there are many?
+            st.markdown("### Individual Files")
+            with st.expander(f"View all {len(job['items'])} files", expanded=True):
+                 for idx, item in enumerate(job["items"], start=1):
+                    # Ensure unique key even if re-rendered
+                    unique_key = f"dl_item_{idx}_{item['token']}"
+                    
+                    col1, col2 = st.columns([0.8, 0.2])
+                    with col1:
+                        st.write(f"**{idx}.** {item['filename']}")
+                    with col2:
+                        st.download_button(
+                            label="⬇️",
+                            data=item["data"],
+                            file_name=item["filename"],
+                            mime=item["mime"],
+                            key=unique_key,
+                        )
         else:
             st.caption("Completed files will appear here as soon as they finish processing.")
 
-        if job.get("archive_data") and job.get("archive_name"):
+        if job.get("archive_batches"):
+            st.markdown("### Batched ZIP Archives")
+            for i, batch in enumerate(job["archive_batches"]):
+                # Ensure each button has a unique key based on batch name/index
+                st.download_button(
+                    label=f"⬇️ Download Batch {i+1} : Items {batch['range_start']}-{batch['range_end']} ({batch['count']} files)",
+                    data=batch["data"],
+                    file_name=batch["name"],
+                    mime="application/zip",
+                    key=f"dl_batch_{i}_{batch['name']}", 
+                    help=f"Download files from batch {i+1} as a single ZIP"
+                )
+
+        if job.get("archive_data") and job.get("archive_name") and not job.get("archive_batches"):
+             # Fallback for small lists or incompatible state
             st.download_button(
                 label="Download all as ZIP",
                 data=job["archive_data"],
