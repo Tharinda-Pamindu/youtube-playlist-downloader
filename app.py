@@ -14,29 +14,6 @@ from urllib.parse import parse_qs, urlparse
 import streamlit as st
 import yt_dlp
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
-import logging
-
-class LogHandler:
-    def __init__(self):
-        self.logs = []
-        
-    def debug(self, msg):
-        self._add("DEBUG", msg)
-        
-    def warning(self, msg):
-        self._add("WARNING", msg)
-        
-    def error(self, msg):
-        self._add("ERROR", msg)
-        
-    def _add(self, level, msg):
-        if not msg.startswith('[debug] '):
-            self.logs.append(f"[{level}] {msg}")
-
-def get_log_handler():
-    if "log_handler" not in st.session_state:
-        st.session_state["log_handler"] = LogHandler()
-    return st.session_state["log_handler"]
 
 
 def apply_root_variables() -> str:
@@ -908,10 +885,6 @@ def start_download_job(url: str, media_format: str, max_items: Optional[int], qu
             "error": None,
         }
     )
-    
-    # Reset logs
-    if "log_handler" in st.session_state:
-        st.session_state["log_handler"].logs = []
 
     ctx = get_script_run_ctx()
 
@@ -1004,10 +977,6 @@ def download_playlist(
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         ydl_opts = build_ydl_options(temp_path, media_format_lower, quality)
-        
-        # Attach logger
-        ydl_opts['logger'] = get_log_handler()
-        ydl_opts['verbose'] = True
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             for position, entry in enumerate(entries, start=1):
@@ -1285,11 +1254,6 @@ def render_status(status_placeholder, progress_holder) -> None:
         job.get("progress_value", 0.0),
         text=job.get("progress_text", "Awaiting your playlist..."),
     )
-    
-    # Show debug logs
-    if "log_handler" in st.session_state and st.session_state["log_handler"].logs:
-        with st.expander("Debug Logs", expanded=False):
-            st.code("\n".join(st.session_state["log_handler"].logs))
 
 
 # Check URL query params for tab selection
