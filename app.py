@@ -2,6 +2,7 @@ import io
 import os
 import re
 import shutil
+import subprocess
 import tempfile
 import threading
 import uuid
@@ -13,6 +14,29 @@ from urllib.parse import parse_qs, urlparse
 import streamlit as st
 import yt_dlp
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+import logging
+
+class LogHandler:
+    def __init__(self):
+        self.logs = []
+        
+    def debug(self, msg):
+        self._add("DEBUG", msg)
+        
+    def warning(self, msg):
+        self._add("WARNING", msg)
+        
+    def error(self, msg):
+        self._add("ERROR", msg)
+        
+    def _add(self, level, msg):
+        if not msg.startswith('[debug] '):
+            self.logs.append(f"[{level}] {msg}")
+
+def get_log_handler():
+    if "log_handler" not in st.session_state:
+        st.session_state["log_handler"] = LogHandler()
+    return st.session_state["log_handler"]
 
 
 def apply_root_variables() -> str:
@@ -479,19 +503,24 @@ def resolve_ffmpeg_path() -> str | None:
     if resolved:
         _FFMPEG_PATH_CACHE = resolved
         return resolved
-    
-    # Also try common system locations
-    common_paths = [
-        "/usr/bin/ffmpeg",
-        "/usr/local/bin/ffmpeg",
-        "/opt/homebrew/bin/ffmpeg",
-    ]
-    for path in common_paths:
-        if Path(path).exists():
-            _FFMPEG_PATH_CACHE = path
-            return path
-    
+
     return None
+
+def resolve_ffprobe_path(ffmpeg_path: str) -> str | None:
+    """Locate ffprobe relative to the found ffmpeg binary."""
+    if not ffmpeg_path:
+        return None
+        
+    ffmpeg_dir = Path(ffmpeg_path).parent
+    # Try finding ffprobe in the same directory
+    probe_name = "ffprobe.exe" if os.name == 'nt' else "ffprobe"
+    probe_path = ffmpeg_dir / probe_name
+    
+    if probe_path.exists():
+        return str(probe_path)
+        
+    # Fallback to system path
+    return shutil.which("ffprobe")
 
 
 def ensure_ffmpeg(media_format: str) -> None:
@@ -516,6 +545,33 @@ def ensure_ffmpeg(media_format: str) -> None:
                 f"Debug info:\n" + "\n".join(debug_info)
             )
             raise RuntimeError(error_msg)
+            
+        # Validate that the found binary is executable
+        try:
+            # Use startupinfo to suppress console window on Windows
+            startupinfo = None
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                
+            subprocess.run(
+                [ffmpeg_path, "-version"], 
+                check=True, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE,
+                startupinfo=startupinfo
+            )
+        except (subprocess.CalledProcessError, OSError) as e:
+            raise RuntimeError(f"FFmpeg found at '{ffmpeg_path}' but failed to run: {e}. Check permissions or corrupted binary.")
+
+        # Check for ffprobe, which is required for efficient format detection
+        ffprobe_path = resolve_ffprobe_path(ffmpeg_path)
+        if not ffprobe_path:
+            raise RuntimeError(
+                "FFprobe not found! High quality (1080p/720p) downloads REQUIRE 'ffprobe' to separate audio/video streams.\n"
+                "Please install ffprobe or place it in the same folder as ffmpeg."
+            )
+
 
 
 def fetch_playlist_entries(url: str, max_items: Optional[int] = None):
@@ -567,7 +623,7 @@ def fetch_playlist_entries(url: str, max_items: Optional[int] = None):
     return playlist_info, entries
 
 
-def build_ydl_options(target_dir: Path, media_format: str):
+def build_ydl_options(target_dir: Path, media_format: str, quality: str = "best"):
     base_opts = {
         "outtmpl": str(target_dir / "%(autonumber)05d - %(title)s.%(ext)s"),
         "ignoreerrors": True,
@@ -575,13 +631,9 @@ def build_ydl_options(target_dir: Path, media_format: str):
         "no_warnings": True,
         "noprogress": True,
         "autonumber_start": 1,
-        # Aggressive YouTube 403 bypass - use mobile clients
-        "user_agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip",
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "ios"],
-            }
-        },
+        "noprogress": True,
+        "autonumber_start": 1,
+        "verbose": True,
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -591,6 +643,13 @@ def build_ydl_options(target_dir: Path, media_format: str):
         "nocheckcertificate": True,
         "geo_bypass": True,
     }
+
+    # Explicitly set ffmpeg location if available
+    ffmpeg_path = resolve_ffmpeg_path()
+    if ffmpeg_path:
+        # Pass the directory so yt-dlp can find ffprobe as well
+        ffmpeg_dir = os.path.dirname(ffmpeg_path)
+        base_opts["ffmpeg_location"] = ffmpeg_dir
 
     if media_format == "mp3":
         base_opts.update(
@@ -606,9 +665,20 @@ def build_ydl_options(target_dir: Path, media_format: str):
             }
         )
     else:
+        if quality == "1080p":
+            format_str = "bv*[height<=1080]+ba"
+        elif quality == "720p":
+            format_str = "bv*[height<=720]+ba"
+        elif quality == "480p":
+            format_str = "bv*[height<=480]+ba"
+        elif quality == "360p":
+            format_str = "bv*[height<=360]+ba"
+        else:
+            format_str = "bv*+ba"
+
         base_opts.update(
             {
-                "format": "bv*+ba/best",
+                "format": format_str,
                 "merge_output_format": "mp4",
             }
         )
@@ -685,6 +755,7 @@ def initialize_job_state() -> dict:
         "running": False,
         "playlist_url": None,
         "media_format": None,
+        "quality": "best",
         "max_items": None,
         "playlist_total": None,
         "playlist_title": None,
@@ -802,7 +873,7 @@ def finalize_job(job_id: str, playlist_info: Optional[dict], media_format: str) 
         job["progress_text"] = "Downloads complete!"
 
 
-def start_download_job(url: str, media_format: str, max_items: Optional[int]) -> None:
+def start_download_job(url: str, media_format: str, max_items: Optional[int], quality: str = "best") -> None:
     job = get_job_state()
     if job.get("running"):
         raise RuntimeError("A download task is already running. Please wait for it to finish or cancel it.")
@@ -819,6 +890,7 @@ def start_download_job(url: str, media_format: str, max_items: Optional[int]) ->
             "running": True,
             "playlist_url": url,
             "media_format": media_format,
+            "quality": quality,
             "max_items": max_items,
             "playlist_total": None,
             "playlist_title": None,
@@ -836,6 +908,10 @@ def start_download_job(url: str, media_format: str, max_items: Optional[int]) ->
             "error": None,
         }
     )
+    
+    # Reset logs
+    if "log_handler" in st.session_state:
+        st.session_state["log_handler"].logs = []
 
     ctx = get_script_run_ctx()
 
@@ -877,6 +953,7 @@ def start_download_job(url: str, media_format: str, max_items: Optional[int]) ->
                 failure_callback=failure_callback,
                 cancel_event=cancel_event,
                 max_items=max_items,
+                quality=quality,
             )
             finalize_job(job_id, playlist_info, media_format)
         except Exception as err:  # noqa: BLE001
@@ -910,6 +987,7 @@ def download_playlist(
     failure_callback=None,
     cancel_event=None,
     max_items: Optional[int] = None,
+    quality: str = "best",
 ):
     ensure_ffmpeg(media_format.lower())
     playlist_info, entries = fetch_playlist_entries(url, max_items=max_items)
@@ -925,7 +1003,11 @@ def download_playlist(
 
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        ydl_opts = build_ydl_options(temp_path, media_format_lower)
+        ydl_opts = build_ydl_options(temp_path, media_format_lower, quality)
+        
+        # Attach logger
+        ydl_opts['logger'] = get_log_handler()
+        ydl_opts['verbose'] = True
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             for position, entry in enumerate(entries, start=1):
@@ -964,7 +1046,9 @@ def download_playlist(
                 media_file = choose_media_file(new_candidates, media_format_lower)
 
                 if not media_file or not media_file.exists():
-                    failure = {"title": title, "error": "Media file not produced"}
+                    found_files = [p.name for p in new_candidates]
+                    error_msg = f"Media file not produced. Temp folder contained: {found_files}"
+                    failure = {"title": title, "error": error_msg}
                     if failure_callback:
                         failure_callback(failure)
                     if progress_callback:
@@ -1201,6 +1285,11 @@ def render_status(status_placeholder, progress_holder) -> None:
         job.get("progress_value", 0.0),
         text=job.get("progress_text", "Awaiting your playlist..."),
     )
+    
+    # Show debug logs
+    if "log_handler" in st.session_state and st.session_state["log_handler"].logs:
+        with st.expander("Debug Logs", expanded=False):
+            st.code("\n".join(st.session_state["log_handler"].logs))
 
 
 # Check URL query params for tab selection
@@ -1276,6 +1365,16 @@ with st.container():
                 disabled=not limit_playlist,
                 help="Process only the first N entries. Helpful for auto-generated mixes with thousands of tracks.",
             )
+
+            quality_choice = "Best"
+            if active_format == "MP4":
+                quality_choice = st.selectbox(
+                    "Video Quality",
+                    options=["Best", "1080p", "720p", "480p", "360p"],
+                    index=0,
+                    help="Select the maximum video resolution. 'Best' will download the highest available quality."
+                )
+
         submitted = st.form_submit_button("Start Download")
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1329,7 +1428,7 @@ if submitted:
             try:
                 if auto_limit_applied:
                     status_placeholder.info("Detected a mix playlist. Limiting to the first 250 items for stability.")
-                start_download_job(url, format_choice, selected_limit)
+                start_download_job(url, format_choice, selected_limit, quality=quality_choice)
             except RuntimeError as err:
                 status_placeholder.warning(str(err))
             except Exception as err:  # noqa: BLE001
